@@ -1,0 +1,198 @@
+basePath: /
+definitions:
+  model.Subscription:
+    properties:
+      end_date:
+        type: string
+      price:
+        type: integer
+      service_name:
+        type: string
+      start_date:
+        type: string
+      subscription_id:
+        type: integer
+      user_id:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: REST API для управления подписками
+  title: EM-test
+  version: "1.0"
+paths:
+  /subscription/{sid}:
+    delete:
+      description: Удаляет подписки по ее SID из URL
+      parameters:
+      - description: SID подписки
+        in: path
+        name: sid
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "404":
+          description: Subscription not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Удаление подписки по SID
+      tags:
+      - subscriptions
+    get:
+      description: Возвращает подписку в формате JSON по ее SID из URL
+      parameters:
+      - description: SID подписки
+        in: path
+        name: sid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "404":
+          description: Subscription not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Получение подписки по SID
+      tags:
+      - subscriptions
+  /subscription/create:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт новую подписку из данных в теле запроса
+      parameters:
+      - description: Subscription info
+        in: body
+        name: subscription
+        required: true
+        schema:
+          $ref: '#/definitions/model.Subscription'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "400":
+          description: Incomplete/incorrect data input
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Хендлер для создания новой подписки
+      tags:
+      - subscriptions
+  /subscription/list:
+    get:
+      description: Отдает массив из всех пользователей базы
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Subscription'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Хендлер для получения списка всех подписок из базы
+      tags:
+      - subscriptions
+  /subscription/update/{sid}:
+    put:
+      consumes:
+      - application/json
+      description: Обновляет подписку по ее SID из URL, новые данные берутся из тела
+        запроса
+      parameters:
+      - description: SID подписки
+        in: path
+        name: sid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Subscription updated successfully
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "404":
+          description: Subscription not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Обновление подписки по ее SID
+      tags:
+      - subscriptions
+  /subscriptions/report:
+    get:
+      description: Выдает сумму стоимости подписок по указанному периоду(конкретному
+        месяцу в формате "07-2024"), пользователю и провайдеру; пользователь и провайдер
+        не являются обязательными полями.
+      parameters:
+      - description: 'Период(конкретный месяц в формате '
+        in: path
+        name: period
+        required: true
+        type: string
+      - description: UID пользователя
+        in: path
+        name: uid
+        type: string
+      - description: Имя провайдера услуги
+        in: path
+        name: provider
+        type: string
+      responses:
+        "200":
+          description: Status OK
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Подсчет суммы подписок удовлетворяющим условиям
+      tags:
+      - subscriptions
+swagger: "2.0"

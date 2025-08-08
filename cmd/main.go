@@ -4,6 +4,7 @@ import (
 	"em-test/cmd/internal/db"
 	"em-test/cmd/internal/handler"
 	"em-test/cmd/internal/repository"
+	"em-test/cmd/internal/service"
 	"fmt"
 	"log"
 	"net/http"
@@ -31,17 +32,19 @@ func main() {
 	db := db.ConnectPostgres(dsn)
 
 	subRepo := repository.SubscriptionRepo{DB: db}
-	subHandler := handler.SubscriptionHandler{Repo: subRepo}
+	subService := service.SubscriptionService{Repo: subRepo}
+	subHandler := handler.SubscriptionHandler{Service: subService}
 
 	r := chi.NewRouter()
 
 	r.Post("/subscription/create", subHandler.Create)
-	r.Get("/subscription/{id}", subHandler.GetByID)
+	r.Get("/subscription/{sid}", subHandler.GetBySID)
 	r.Get("/subscription/list", subHandler.GetList)
-	r.Delete("/subscription/delete/{id}", subHandler.Delete)
-	r.Put("/subscription/update/{id}", subHandler.UpdateByID)
+	r.Delete("/subscription/delete/{sid}", subHandler.Delete)
+	r.Put("/subscription/update/{sid}", subHandler.UpdateBySID)
 
-	r.Get("/search", subHandler.Search)
+	r.Get("/subscriptions/report", subHandler.Report)
+	//GET /subscriptions/report?period=05-2024&uid=42&provider=YoutubePremium
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
