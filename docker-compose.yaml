@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: emtest_db
+    environment:
+      POSTGRES_USER: emuser
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: emtest
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: emtest_app
+    depends_on:
+    - db
+    ports:
+    - "8080:8080"
+    env_file:
+    - .env
+
+volumes:
+  db_data:

@@ -1,17 +1,19 @@
 package main
 
 import (
+	"em-test/cmd/config"
 	"em-test/cmd/internal/db"
 	"em-test/cmd/internal/handler"
-	"em-test/cmd/internal/repository"
-	"em-test/cmd/internal/service"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	_ "em-test/docs"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -21,39 +23,41 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: .env file not found")
-	}
+	cfg := config.Load()
+	database := db.ConnectPostgres(cfg.DSN)
 
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("DATABASE_URL is not set in env")
-	}
-	db := db.ConnectPostgres(dsn)
+	//Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-quit
+		sqlDB, err := database.DB()
+		if err == nil {
+			sqlDB.Close()
+		}
+		log.Printf("[%v] Subscription server stopped: DB-connections closed.\n", time.Now().Format("2006-01-02 15:04:05"))
+		os.Exit(0)
+	}()
 
-	subRepo := repository.SubscriptionRepo{DB: db}
-	subService := service.SubscriptionService{Repo: subRepo}
-	subHandler := handler.SubscriptionHandler{Service: subService}
-
+	//Creting hadnler with embedded service and repo
+	subHandler := handler.CreateHandler(database)
 	r := chi.NewRouter()
 
-	r.Post("/subscription/create", subHandler.Create)
-	r.Get("/subscription/{sid}", subHandler.GetBySID)
-	r.Get("/subscription/list", subHandler.GetList)
-	r.Delete("/subscription/delete/{sid}", subHandler.Delete)
-	r.Put("/subscription/update/{sid}", subHandler.UpdateBySID)
+	//HTTP-handlers: service and swagger
+	r.Post("/subscriptions", subHandler.Create)
+	r.Get("/subscriptions", subHandler.GetList)
+	r.Get("/subscriptions/{sid}", subHandler.GetBySID)
+	r.Delete("/subscriptions/{sid}", subHandler.Delete)
+	r.Put("/subscriptions/{sid}", subHandler.UpdateBySID)
 
 	r.Get("/subscriptions/report", subHandler.Report)
-	//GET /subscriptions/report?period=05-2024&uid=42&provider=YoutubePremium
+	//GET  /subscriptions/report?period=05-2024&uid=42&provider=YoutubePremium
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
-	port := os.Getenv("SUBSCRIPTION_PORT")
-	if port == "" {
-		log.Fatal("PORT is not set in env")
-	}
-	fmt.Printf("Server running on http://localhost%s\n", port)
-	if err := http.ListenAndServe(port, r); err != nil {
-		log.Fatal(err)
+	//Starting server
+	log.Printf("Server running on http://localhost%s", cfg.Port)
+	if err := http.ListenAndServe(cfg.Port, r); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
 	}
 }
